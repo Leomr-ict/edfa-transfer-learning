@@ -15,6 +15,20 @@ Proyecto basado en mi tesis de Magíster en Ciencias de la Ingeniería (Universi
 > On a real 4-span, 200 km link the picture is a trade-off: transfer learning wins on the first spans, but its
 > error grows along the cascade (0.26 → 0.61 dB) while the generic model stays flatter (0.39 → 0.46 dB).
 
+## Habilidades aplicadas
+
+| Área | En este repositorio |
+|---|---|
+| Machine learning | Redes neuronales en **PyTorch**, **transfer learning** en dos fases (capas congeladas + fine-tuning), pérdida enmascarada, comparación contra un modelo de referencia y contra entrenar desde cero |
+| Evaluación | **Validación cruzada agrupada** para evitar fuga de datos, varias semillas para medir estabilidad, pruebas fuera de distribución (enlace real, incertidumbre de potencia) |
+| Datos | **pandas** y **NumPy**: limpieza de mediciones fuera de rango, integración de un dataset público (126.320 muestras) con mediciones propias, visualización con **Matplotlib** |
+| Procesamiento de señales | Lectura de capturas del OSA y detección automática de canales WDM con **SciPy** |
+| Telecomunicaciones | DWDM de 95 canales, EDFA, *gain ripple*, OSA, enlaces multitramo, estimación de QoT |
+| Ingeniería de software | Código en módulos, scripts reproducibles por línea de comandos, **pruebas automáticas con pytest**, entorno virtual y dependencias |
+
+En la tesis original también usé **Optuna** (búsqueda de hiperparámetros) y **data augmentation**
+(15 copias por medición con ruido gaussiano de 0,03 dB); no forman parte de esta versión.
+
 ## El problema
 
 Un EDFA amplifica todos los canales de una fibra a la vez, pero no con la misma ganancia: la
@@ -58,6 +72,13 @@ emula bajando 3 dB la potencia solo antes de S1, sin tocar el resto del enlace.
    - Fase 2: se ajusta la red completa con una tasa de aprendizaje baja.
 
    Como comparación se entrena el mismo modelo desde cero, solo con datos del laboratorio.
+
+   ![Arquitectura y fine-tuning](docs/arquitectura_transfer_learning.png)
+
+   *La red parte de los pesos del modelo base (preentrenado con COSMOS) y se ajusta completa
+   con las mediciones de cada EDFA. Entradas: ganancia objetivo, potencias totales de entrada y
+   salida, potencia de los 95 canales y cuáles están encendidos (193 en total). Salida: la ganancia
+   de cada canal (95).*
 4. **Validación cruzada sin fugas** (`edfa/validacion.py`).
 5. **Evaluación en el enlace** (`edfa/enlace.py`), de dos formas:
    - *Entrada medida*: cada modelo recibe el espectro medido a la entrada de su EDFA, que ya trae
@@ -168,7 +189,8 @@ python -m edfa.enlace             # enlace: nominal e incertidumbre (~3 min en C
 python -m edfa.validacion         # validación cruzada (~15 min en CPU; --rapido para 1 semilla)
 ```
 
-Los resultados (tablas CSV y figuras) quedan en `resultados/`. El modelo base ya entrenado está en
+Los resultados (tablas CSV y figuras) quedan en `resultados/`. Con `--rapido` se usa una sola
+semilla, así que los números difieren levemente de las tablas de arriba (promedio de 3 semillas). El modelo base ya entrenado está en
 `modelos/base_cosmos.pth`; para reentrenarlo se necesita el CSV de COSMOS (`python -m edfa.base --csv ...`).
 
 ## Estructura
@@ -183,7 +205,7 @@ edfa/
   validacion.py     validación cruzada por perfil de espectro
   enlace.py         evaluación en el enlace de 4 tramos (nominal e incertidumbre)
 datos/              mediciones del laboratorio y capturas de ejemplo del OSA
-docs/               figura del montaje experimental
+docs/               figuras del montaje experimental y de la arquitectura
 modelos/            modelo base y especialistas finales
 resultados/         tablas y figuras generadas
 tests/              pruebas automáticas (pytest)
